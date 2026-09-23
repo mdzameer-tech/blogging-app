@@ -1,0 +1,28 @@
+
+   1 will have to put nodemon into devdependencies npm i nodemon -D
+
+    as we want it only in during the dev environment 
+
+
+2   profile default image 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+new stuff/:
+
+hash + salt + pepper,
+
+.....
+
+virtual fxn using static in ongoose,
