@@ -1,6 +1,6 @@
 const { Schema, model} = require("mongoose");
 
-const { createHmac, randomBytes, hash } = require("crypto")
+const { createHmac, randomBytes } = require("crypto")
 
 const userSchema = new Schema({
     fullName : {
@@ -21,7 +21,9 @@ const userSchema = new Schema({
     },    
     profileImage:{
         type : String,
-        default : "imdd"
+        default : "/image/default-image.jpg"
+// why the fck wont they write the ./public though
+
     },
     role : {
         type : String,
@@ -32,25 +34,48 @@ const userSchema = new Schema({
 {  timestamps : true }
 );
 
+
+//most important concept until now 
+
 userSchema.pre("save", function (next){
 
     const user = this;
-    if( !user.isModified("password")) return;   //imp
+    if (!user.isModified("password")) return next();
 
     const salt = randomBytes(16).toString();
-    const hashedPassword = crypto
-        .createHmac("sha256", salt)
+    const hashedPassword = createHmac("sha256", salt)
         .update(user.password)
         .digest("hex");
 
     user.salt = salt;
     user.password = hashedPassword;
 
-    next();
+});
+
+
+
+userSchema.static("matchPassword", async function(email, password){
+    const user = await this.findOne({ email });
+    if(!user) throw new Error("user not found");
+
+    const salt = user.salt;
+    const hashedPassword = user.password;
+
+    const providedPasswordHash = 
+    createHmac("sha256", salt)
+        .update(password)
+        .digest("hex");
+    
+    if(hashedPassword !== providedPasswordHash){
+        throw new Error("incorrect password")
+    }
+
+
+    return user;
 })
 
 
-userSchema.static
+
 
 const User = model("user", userSchema);
 
