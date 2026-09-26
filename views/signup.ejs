@@ -6,12 +6,18 @@
 </head>
 <body>
     <%- include("./partials/nav.ejs") %>  
-    <div id="container">
+    <div id="container " class="container mt-4">
         <form action="/user/signup" method="POST">
             <div class="mb-3">
                 
-                <label for="fullName" class="form-label">Full Name</label>
-                <input type="text" class="form-control" name="fullName" id="fullName" aria-describedby="fullName">
+                <label for="firstName" class="form-label">First Name</label>
+                <input type="text" class="form-control" name="firstName" id="firstName" aria-describedby="firstName">
+               
+            </div>
+            <div class="mb-3">
+                
+                <label for="lastName" class="form-label">Last Name</label>
+                <input type="text" class="form-control" name="lastName" id="lastName" aria-describedby="lastName">
                
             </div>
             <div class="mb-3">

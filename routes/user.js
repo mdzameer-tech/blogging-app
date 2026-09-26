@@ -17,6 +17,11 @@ router.get("/signin", (req, res)=>{
 });
 
 
+router.get("/logout",(req, res)=>{
+    console.log("logged out", user)
+
+    res.clearCookie("token").redirect("/");
+});
 
 
 // MINE WORKS BUT WANT TO TRY CATCH ERROR
@@ -33,10 +38,10 @@ router.get("/signin", (req, res)=>{
 // });
 
 router.post("/signup", async (req, res) => {
-    const { fullName, email, password } = req.body;
+    const { firstName, lastName, email, password } = req.body;
 
     try {
-        await User.create({ fullName, email, password });
+        await User.create({ firstName, lastName, email, password });
         return res.redirect("/signin");
     } catch (err) {
         if (err.code === 11000) {
@@ -57,13 +62,29 @@ router.post("/signup", async (req, res) => {
 
 
 router.post("/signin", async (req, res)=>{
+    
+    
+    
     const { password, email } = req.body;
+    try{
+        const token  = await User.matchPasswordAndGenerateToken(email, password);
 
-    const user = await User.matchPassword(email, password);
+        console.log("Token", token);
 
-    console.log("User", user);
-
-    return res.redirect("/");
+        return res.cookie("token", token).redirect("/");
+    }
+    
+    // catch(error){
+    //     console.error("Sign-in failed:", error.message);
+    //     // Redirect after a failed POST so refreshing the page does not resubmit it.
+    //     return res.redirect("/user/signin");
+    // }
+    catch(error){
+        return res.render("signin", {
+            error: "incorrect email or password",
+        })
+    }
+    
 });
 
 

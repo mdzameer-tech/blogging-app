@@ -1,0 +1,30 @@
+const mongoose = require("mongoose");
+const {Schema, model} = require("mongoose");
+
+const blogSchema = new Schema({
+    title :{
+        type : String,
+        required : true
+    },
+    body :{
+        type : String,
+        required : true
+    },
+    body :{
+        type : String,
+        required : true
+    },
+    coverImage :{
+        type : String,
+        required : false
+    },
+    created_by:{
+        type : Schema.Types.ObjectId ,
+        ref: "user" // have to put in the model name of whatever we use
+        // required : true
+    }
+},{
+    timestamps: true,
+});
+
+const Blog = model("blog", blogSchema);
