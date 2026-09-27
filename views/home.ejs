@@ -6,8 +6,27 @@
 </head>
 <body>
     <%- include("./partials/nav.ejs") %>  
-    <%= JSON.stringify(user) %>
     
+    <% blogs.forEach(blog => { %>
+        <div class="card" style="width: 18rem;">
+            <% if (blog.coverImage) { %>
+                <img src="<%= blog.coverImage %>" class="card-img-top" alt="Blog image" style="height: 200px; object-fit: cover;">
+            <% } %>
+
+            <div class="card-body">
+                <h5 class="card-title"><%= blog.title %></h5>
+
+                <p class="card-text">
+                    <%= blog.body %>
+                </p>
+
+                <a href="/blog/<%= blog._id %>" class="btn btn-primary">
+                    View
+                </a>
+            </div>
+        </div>
+    <% }); %>
+
     <%- include("./partials/script.ejs") %>  
 </body>
 </html>
