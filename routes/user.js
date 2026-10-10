@@ -18,9 +18,10 @@ router.get("/signin", (req, res)=>{
 
 
 router.get("/logout",(req, res)=>{
-    console.log("logged out", user)
+    console.log("logged out", req.user)
 
     res.clearCookie("token").redirect("/");
+    
 });
 
 
@@ -42,7 +43,7 @@ router.post("/signup", async (req, res) => {
 
     try {
         await User.create({ firstName, lastName, email, password });
-        return res.redirect("/signin");
+        return res.redirect("/user/signin");
     } catch (err) {
         if (err.code === 11000) {
             // duplicate email

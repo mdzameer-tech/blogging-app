@@ -26,7 +26,7 @@ mongoose.connect("mongodb://localhost:27017/blogify")
 
 app.use(express.urlencoded({extended : false}));
 app.use(cookieParser());
-app.use(express.static('public')); // so that the browser can load/access files from public directly! without this it cant 
+app.use(express.static(path.resolve("./public"))); // so that the browser can load/access files from public directly! without this it cant 
 
 app.use(checkForAuthenticationCookie("token"));
 
@@ -35,7 +35,7 @@ app.use(checkForAuthenticationCookie("token"));
 
 
 app.get("/", async(req, res)=>{
-    const allBlogs = await (await Blog.find({}));
+    const allBlogs = await Blog.find({});
     res.render("home.ejs", {
         user: req.user,
         blogs : allBlogs,

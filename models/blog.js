@@ -16,9 +16,10 @@ const blogSchema = new Schema({
         type : String,
         required : false
     },
-    created_by:{
+    createdBy:{
         type : Schema.Types.ObjectId ,
-        ref: "user" // have to put in the model name of whatever we use
+        ref: "user"
+         // have to put in the model name of whatever we use
         // required : true
     }
 },{

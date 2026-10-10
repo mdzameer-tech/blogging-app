@@ -1,7 +1,7 @@
 
-   1 will have to put nodemon into devdependencies npm i nodemon -D
+1 will have to put nodemon into devdependencies npm i nodemon -D
 
-    as we want it only in during the dev environment 
+  as we want it only in during the dev environment 
 
 
 2   profile default image 
@@ -118,3 +118,35 @@ router.post("/signup", async (req, res) => {
 
 
 -----------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ <img src="<%= blog.createdBy.profileImage %>" width="40px"/> <%= 
+        blog.createdBy.firstName %><%=blog.createdBy.lastName %>
+    
+
+
+
+
+
+
+   
+    
+  

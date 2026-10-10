@@ -4,7 +4,7 @@ const SECRETKEY = "$gottado_it"
 
 function createTokenForUser(user){
     const payload = {
-        user_id: user._id,
+        _id: user._id,
         email: user.email,
         firstName : user.firstName,
         profileImage: user.profileImage,
