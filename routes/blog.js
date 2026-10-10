@@ -29,6 +29,16 @@ router.get("/add-new", (req, res)=>{
     //  but idk how we got user here = > i got it, we got that from authentication from there we had sent req.user
 });
 
+router.get("/my-blogs", async(req, res)=>{
+    const allBlogs = await Blog.find({
+        createdBy: req.user._id
+    }   );
+    return res.render("my-blogs.ejs", {
+        user: req.user,
+        all_my_Blogs : allBlogs,
+    })
+});
+
 router.get("/:id", async(req, res)=>{
     const blog = await Blog.findById(req.params.id).populate("createdBy");
     const comments = await Comment.find({ blog: req.params.id }).populate("createdBy");
@@ -48,7 +58,7 @@ router.post("/add-new", upload.single("coverImage"), async (req, res)=>{
         title: title,
         body : body,
         coverImage: `/uploads/${req.file.filename}`,
-        createdBy: req.user.user_id,
+        createdBy: req.user._id,
     });
     return res.redirect(`/blog/${blog._id}`)
 });
@@ -68,5 +78,7 @@ router.post("/comment/:id", async (req, res)=>{
     });
     return res.redirect(`/blog/${blog._id}`);
 });
+
+
 
 module.exports = router;
