@@ -21,7 +21,8 @@ const blogSchema = new Schema({
         ref: "user"
          // have to put in the model name of whatever we use
         // required : true
-    }
+    },
+    collaborators: [{ type: Schema.Types.ObjectId, ref: "user" }]
 },{
     timestamps: true,
 });

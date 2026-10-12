@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <%- include("./partials/head.ejs") %>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <title>Edit: <%= blog.title %></title>
+    <style>
+      .editor-wrapper {
+        position: relative;
+        border-radius: 8px;
+        overflow: hidden;
+      }
+      .cursors-layer {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        overflow: hidden;
+        z-index: 10;
+      }
+      .remote-cursor {
+        position: absolute;
+        width: 2px;
+        pointer-events: none;
+        transition: top 0.08s ease, left 0.08s ease;
+      }
+      .cursor-flag {
+        position: absolute;
+        bottom: 100%;
+        left: 0;
+        transform: translateY(-2px);
+        font-size: 11px;
+        font-weight: 600;
+        color: #ffffff;
+        padding: 1px 6px;
+        border-radius: 4px;
+        white-space: nowrap;
+        pointer-events: none;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        animation: fadeIn 0.2s ease-in-out;
+      }
+      .cursor-flag::after {
+        content: "";
+        position: absolute;
+        top: 100%;
+        left: 2px;
+        border-width: 3px;
+        border-style: solid;
+        border-color: inherit transparent transparent transparent;
+      }
+      .user-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 13px;
+        font-weight: 500;
+        color: #fff;
+        margin-right: 6px;
+        margin-bottom: 4px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+      }
+      .typing-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 3px 8px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 500;
+        color: #fff;
+        animation: pulse 1.5s infinite;
+      }
+      @keyframes pulse {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.8; transform: scale(0.98); }
+      }
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-6px); }
+        to { opacity: 1; transform: translateY(-2px); }
+      }
+      .diff-view-box {
+        font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        font-size: 13.5px;
+        line-height: 1.6;
+        white-space: pre-wrap;
+        word-break: break-word;
+        background: var(--bs-body-bg, #ffffff);
+        color: var(--bs-body-color, #212529);
+        border: 1px solid var(--bs-border-color, #dee2e6);
+        border-radius: 6px;
+        padding: 14px;
+        min-height: 280px;
+        max-height: 480px;
+        overflow-y: auto;
+      }
+      .diff-ins {
+        background-color: rgba(25, 135, 84, 0.25);
+        color: var(--bs-success-text-emphasis, #0f5132);
+        text-decoration: none;
+        padding: 1px 4px;
+        border-radius: 3px;
+        display: inline;
+        font-weight: 500;
+      }
+      .diff-del {
+        background-color: rgba(220, 53, 69, 0.25);
+        color: var(--bs-danger-text-emphasis, #842029);
+        text-decoration: line-through;
+        padding: 1px 4px;
+        border-radius: 3px;
+        display: inline;
+        font-weight: 500;
+      }
+      .version-item {
+        transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+      }
+      .version-item:hover {
+        border-color: #0d6efd !important;
+      }
+      .version-item-fresh {
+        animation: highlightNew 2s ease-out;
+      }
+      @keyframes highlightNew {
+        0% { background-color: rgba(25, 135, 84, 0.25) !important; border-color: #198754 !important; }
+        100% { border-color: var(--bs-border-color, #dee2e6) !important; }
+      }
+    </style>
+  </head>
+  <body>
+    <%- include("./partials/nav.ejs") %>
+
+    <div class="container mt-4">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h2 class="mb-0"><%= blog.title %></h2>
+        <span id="status" class="badge bg-secondary px-3 py-2">Connecting...</span>
+      </div>
+
+      <!-- Online collaborators section -->
+      <div class="card p-2 mb-3 bg-body-tertiary border-0 shadow-sm">
+        <div class="d-flex flex-wrap align-items-center">
+          <strong class="me-2 text-muted" style="font-size: 14px;">Online Collaborators:</strong>
+          <div id="online-users" class="d-flex flex-wrap align-items-center"></div>
+        </div>
+        <div id="typing-indicator" class="mt-1 d-flex flex-wrap gap-2" style="min-height: 24px;"></div>
+      </div>
+
+      <!-- Editor with real-time cursor overlay -->
+      <div class="editor-wrapper shadow-sm">
+        <div id="cursors-layer" class="cursors-layer"></div>
+        <textarea id="body" class="form-control font-monospace" rows="20" style="resize: vertical; font-size: 15px; line-height: 1.6;"><%= blog.body %></textarea>
+      </div>
+
+      <div class="mt-3 d-flex justify-content-between align-items-center">
+        <div>
+          <button id="leave" class="btn btn-outline-secondary">Leave editor</button>
+          <a href="/blog/<%= blog._id %>" class="btn btn-link">View post</a>
+        </div>
+        <small class="text-muted" id="save-status">Autosaves continuously while typing</small>
+      </div>
+
+      <!-- Version history -->
+      <div class="d-flex justify-content-between align-items-center mt-5 mb-2">
+        <h5 class="mb-0">Version history</h5>
+        <span id="version-live-badge" class="badge bg-success" style="display: none;">
+          <i class="bi bi-clock-history"></i> Version Saved
+        </span>
+      </div>
+      <div id="versions-container">
+        <div id="versions-list"></div>
+        <p class="text-muted" id="no-versions-msg" style="<%= (!versions || versions.length === 0) ? '' : 'display: none;' %>">
+          No saved versions yet. Versions are automatically created every minute during active editing.
+        </p>
+      </div>
+    </div>
+
+    <!-- Side-by-Side Comparison Modal -->
+    <div class="modal fade" id="diffModal" tabindex="-1" aria-labelledby="diffModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+          <div class="modal-header">
+            <div>
+              <h5 class="modal-title" id="diffModalLabel">
+                <i class="bi bi-file-diff text-primary"></i> Version Comparison
+              </h5>
+              <div class="small text-muted mt-1" id="diffModalSubtitle"></div>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" id="diffModalCloseBtn"></button>
+          </div>
+          <div class="modal-body">
+            <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+              <div class="d-flex gap-2 align-items-center">
+                <span class="badge" style="background-color: #d1e7dd; color: #0f5132; border: 1px solid #a3cfbb;">
+                  + Added (Green)
+                </span>
+                <span class="badge" style="background-color: #f8d7da; color: #842029; border: 1px solid #f1aeb5;">
+                  - Removed (Red with Strikethrough)
+                </span>
+              </div>
+              <div class="btn-group btn-group-sm" role="group">
+                <button type="button" class="btn btn-outline-primary active" id="btnSideBySide">
+                  <i class="bi bi-layout-split"></i> Side-by-Side
+                </button>
+                <button type="button" class="btn btn-outline-primary" id="btnUnified">
+                  <i class="bi bi-card-text"></i> Unified View
+                </button>
+              </div>
+            </div>
+
+            <!-- Side-by-Side view -->
+            <div id="sideBySideView" class="row g-2">
+              <div class="col-md-6">
+                <div class="card h-100 shadow-sm">
+                  <div class="card-header py-2 bg-light fw-bold small text-muted d-flex justify-content-between">
+                    <span><i class="bi bi-arrow-left-circle text-secondary"></i> Previous Version</span>
+                    <span id="diffOldMeta" class="fw-normal text-secondary"></span>
+                  </div>
+                  <div id="diffOldBox" class="diff-view-box"></div>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="card h-100 shadow-sm">
+                  <div class="card-header py-2 bg-light fw-bold small text-muted d-flex justify-content-between">
+                    <span><i class="bi bi-check-circle text-success"></i> Selected Version</span>
+                    <span id="diffNewMeta" class="fw-normal text-secondary"></span>
+                  </div>
+                  <div id="diffNewBox" class="diff-view-box"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Unified view -->
+            <div id="unifiedView" style="display: none;">
+              <div class="card shadow-sm">
+                <div class="card-header py-2 bg-light fw-bold small text-muted">
+                  <i class="bi bi-card-text text-primary"></i> Combined Inline Diff
+                </div>
+                <div id="diffUnifiedBox" class="diff-view-box"></div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="diffModalFooterCloseBtn">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bootstrap Bundle script included before client logic so bootstrap is defined -->
+    <%- include("./partials/script.ejs") %>
+    <script src="/socket.io/socket.io.js"></script>
+
+    <script>
+      const socket = io();
+      const blogId = "<%= blog._id %>";
+      const editor = document.getElementById("body");
+      const statusEl = document.getElementById("status");
+      const onlineUsersEl = document.getElementById("online-users");
+      const typingIndicatorEl = document.getElementById("typing-indicator");
+      const cursorsLayer = document.getElementById("cursors-layer");
+      const versionLiveBadge = document.getElementById("version-live-badge");
+
+      let myUserId = null;
+      let myColor = "#0d6efd";
+      let remoteCursors = new Map(); // userId -> { name, color, position }
+      let activeTypers = new Map();  // userId -> { name, color }
+      let typingTimeout = null;
+
+      // Initial versions data from server
+      const initialVersions = <%- JSON.stringify((versions || []).map(v => ({
+        id: String(v._id),
+        body: v.body,
+        createdAt: v.createdAt ? new Date(v.createdAt).toLocaleString() : "",
+        savedBy: v.savedBy ? (v.savedBy.firstName || v.savedBy.email) : "unknown"
+      }))) %>;
+      let versionsData = [...initialVersions];
+
+      // Socket connection events
+      socket.on("connect", () => {
+        statusEl.textContent = "Live";
+        statusEl.className = "badge bg-success px-3 py-2";
+        socket.emit("join", blogId);
+      });
+
+      socket.on("disconnect", () => {
+        statusEl.textContent = "Reconnecting...";
+        statusEl.className = "badge bg-warning text-dark px-3 py-2";
+      });
+
+      socket.on("forbidden", () => {
+        statusEl.textContent = "No access";
+        statusEl.className = "badge bg-danger px-3 py-2";
+      });
+
+      // Initialization from server
+      socket.on("init", (data) => {
+        if (data.body !== undefined && editor.value !== data.body) {
+          editor.value = data.body;
+        }
+        if (data.myId) myUserId = data.myId;
+        if (data.myColor) myColor = data.myColor;
+        sendMyCursor();
+      });
+
+      // Remote edit received
+      socket.on("edit", (data) => {
+        const start = editor.selectionStart;
+        const end = editor.selectionEnd;
+        editor.value = data.body;
+        editor.setSelectionRange(start, end);
+
+        if (data.userId && typeof data.cursor === "number") {
+          remoteCursors.set(data.userId, {
+            name: data.name,
+            color: data.color,
+            position: data.cursor
+          });
+        }
+        renderAllCursors();
+      });
+
+      // Presence update (online users)
+      socket.on("presence", (users) => {
+        onlineUsersEl.innerHTML = "";
+        const onlineIds = new Set(users.map(u => u._id));
+
+        // Clean up cursors and typers for offline users
+        for (const uid of remoteCursors.keys()) {
+          if (!onlineIds.has(uid)) remoteCursors.delete(uid);
+        }
+        for (const uid of activeTypers.keys()) {
+          if (!onlineIds.has(uid)) activeTypers.delete(uid);
+        }
+        renderTypingIndicators();
+        renderAllCursors();
+
+        users.forEach((u) => {
+          const pill = document.createElement("span");
+          pill.className = "user-pill";
+          pill.style.backgroundColor = u.color || "#0d6efd";
+          const isMe = u._id === myUserId;
+          pill.innerHTML = `<span>●</span> <span>${escapeHtml(u.name || u.email)}${isMe ? " (You)" : ""}</span>`;
+          onlineUsersEl.appendChild(pill);
+        });
+      });
+
+      // User left
+      socket.on("userLeft", (data) => {
+        if (data && data.userId) {
+          remoteCursors.delete(data.userId);
+          activeTypers.delete(data.userId);
+          renderTypingIndicators();
+          renderAllCursors();
+        }
+      });
+
+      // Remote cursor event
+      socket.on("cursor", (data) => {
+        if (!data || !data.userId || data.userId === myUserId) return;
+        remoteCursors.set(data.userId, {
+          name: data.name,
+          color: data.color,
+          position: data.position
+        });
+        renderAllCursors();
+      });
+
+      // Remote typing event
+      socket.on("typing", (data) => {
+        if (!data || !data.userId || data.userId === myUserId) return;
+        if (data.isTyping) {
+          activeTypers.set(data.userId, { name: data.name, color: data.color });
+        } else {
+          activeTypers.delete(data.userId);
+        }
+        renderTypingIndicators();
+      });
+
+      // Real-time automatic version creation event
+      socket.on("versionCreated", (newVer) => {
+        if (!newVer || !newVer._id) return;
+        const formattedVer = {
+          id: String(newVer._id),
+          body: newVer.body || "",
+          createdAt: newVer.createdAt ? new Date(newVer.createdAt).toLocaleString() : new Date().toLocaleString(),
+          savedBy: newVer.savedBy ? (newVer.savedBy.firstName || newVer.savedBy.email) : "unknown"
+        };
+
+        // Prepend new version at index 0
+        versionsData.unshift(formattedVer);
+        if (versionsData.length > 10) {
+          versionsData.pop();
+        }
+
+        renderVersionsList(formattedVer.id);
+
+        // Flash notification badge
+        if (versionLiveBadge) {
+          versionLiveBadge.style.display = "inline-block";
+          setTimeout(() => {
+            versionLiveBadge.style.display = "none";
+          }, 3500);
+        }
+      });
+
+      function renderTypingIndicators() {
+        typingIndicatorEl.innerHTML = "";
+        if (activeTypers.size === 0) return;
+        activeTypers.forEach((user) => {
+          const badge = document.createElement("span");
+          badge.className = "typing-badge";
+          badge.style.backgroundColor = user.color || "#0d6efd";
+          badge.innerHTML = `✏️ ${escapeHtml(user.name)} is typing...`;
+          typingIndicatorEl.appendChild(badge);
+        });
+      }
+
+      // Caret coordinates calculator
+      function getCaretCoordinates(element, position) {
+        let mirror = document.getElementById("textarea-mirror");
+        if (!mirror) {
+          mirror = document.createElement("div");
+          mirror.id = "textarea-mirror";
+          document.body.appendChild(mirror);
+        }
+        const style = window.getComputedStyle(element);
+        mirror.style.position = "absolute";
+        mirror.style.top = "-9999px";
+        mirror.style.left = "-9999px";
+        mirror.style.visibility = "hidden";
+        mirror.style.whiteSpace = "pre-wrap";
+        mirror.style.wordWrap = "break-word";
+        mirror.style.width = element.clientWidth + "px";
+        mirror.style.fontFamily = style.fontFamily;
+        mirror.style.fontSize = style.fontSize;
+        mirror.style.fontWeight = style.fontWeight;
+        mirror.style.lineHeight = style.lineHeight;
+        mirror.style.letterSpacing = style.letterSpacing;
+        mirror.style.padding = style.padding;
+        mirror.style.border = style.border;
+        mirror.style.boxSizing = style.boxSizing;
+
+        mirror.textContent = element.value.substring(0, position);
+        const marker = document.createElement("span");
+        marker.textContent = element.value.substring(position, position + 1) || "\u200b";
+        mirror.appendChild(marker);
+
+        const borderTop = parseFloat(style.borderTopWidth) || 0;
+        const borderLeft = parseFloat(style.borderLeftWidth) || 0;
+        const spanHeight = marker.offsetHeight || parseFloat(style.lineHeight) || 24;
+
+        return {
+          left: marker.offsetLeft + borderLeft - element.scrollLeft,
+          top: marker.offsetTop + borderTop - element.scrollTop,
+          height: spanHeight
+        };
+      }
+
+      // Render all remote cursors
+      function renderAllCursors() {
+        cursorsLayer.innerHTML = "";
+        remoteCursors.forEach((c) => {
+          const coords = getCaretCoordinates(editor, c.position);
+          if (coords.top < -coords.height || coords.top > editor.clientHeight) {
+            return;
+          }
+          const cursorDiv = document.createElement("div");
+          cursorDiv.className = "remote-cursor";
+          cursorDiv.style.left = coords.left + "px";
+          cursorDiv.style.top = coords.top + "px";
+          cursorDiv.style.height = coords.height + "px";
+          cursorDiv.style.backgroundColor = c.color;
+
+          const flag = document.createElement("div");
+          flag.className = "cursor-flag";
+          flag.style.backgroundColor = c.color;
+          flag.style.borderColor = c.color;
+          flag.textContent = c.name;
+
+          cursorDiv.appendChild(flag);
+          cursorsLayer.appendChild(cursorDiv);
+        });
+      }
+
+      // Emit local cursor and typing
+      function sendMyCursor() {
+        socket.emit("cursor", { position: editor.selectionStart });
+      }
+
+      function handleTyping() {
+        socket.emit("typing", { isTyping: true });
+        clearTimeout(typingTimeout);
+        typingTimeout = setTimeout(() => {
+          socket.emit("typing", { isTyping: false });
+        }, 1500);
+      }
+
+      editor.addEventListener("input", () => {
+        socket.emit("edit", { body: editor.value, cursor: editor.selectionStart });
+        handleTyping();
+        sendMyCursor();
+      });
+
+      editor.addEventListener("keyup", sendMyCursor);
+      editor.addEventListener("click", sendMyCursor);
+      editor.addEventListener("select", sendMyCursor);
+      editor.addEventListener("scroll", renderAllCursors);
+      window.addEventListener("resize", renderAllCursors);
+
+      document.getElementById("leave").addEventListener("click", () => {
+        socket.emit("leave");
+        socket.disconnect();
+        window.location.href = "/blog/" + blogId;
+      });
+
+      // --- Version Rendering & Diff Logic ---
+
+      function renderVersionsList(highlightId = null) {
+        const listEl = document.getElementById("versions-list");
+        const noVersionsMsg = document.getElementById("no-versions-msg");
+
+        if (!versionsData || versionsData.length === 0) {
+          listEl.innerHTML = "";
+          if (noVersionsMsg) noVersionsMsg.style.display = "block";
+          return;
+        }
+
+        if (noVersionsMsg) noVersionsMsg.style.display = "none";
+
+        let html = "";
+        versionsData.forEach((v, index) => {
+          const isFresh = v.id === highlightId ? "version-item-fresh" : "";
+          html += `
+            <div class="version-item ${isFresh} mb-2 d-flex align-items-center gap-2 p-2 border rounded bg-body-tertiary shadow-sm" data-version-id="${v.id}">
+              <button type="button" class="btn btn-sm btn-outline-info view-diff-btn d-flex align-items-center gap-1" data-index="${index}">
+                <i class="bi bi-eye"></i> View
+              </button>
+              <span class="badge bg-secondary">${escapeHtml(v.createdAt)}</span>
+              <span class="text-muted small">by ${escapeHtml(v.savedBy)}</span>
+              <form action="/blog/${blogId}/versions/${v.id}/restore" method="post" class="ms-auto m-0">
+                <button type="submit" class="btn btn-sm btn-outline-primary d-flex align-items-center gap-1">
+                  <i class="bi bi-arrow-counterclockwise"></i> Restore
+                </button>
+              </form>
+            </div>
+          `;
+        });
+        listEl.innerHTML = html;
+      }
+
+      // Initial render on load
+      renderVersionsList();
+
+      // Word / whitespace tokenizer for natural diffing
+      function tokenize(text) {
+        if (!text) return [];
+        return text.match(/\S+|\s+/g) || [];
+      }
+
+      // Myers / LCS algorithm for token diff
+      function computeDiff(oldTokens, newTokens) {
+        const n = oldTokens.length;
+        const m = newTokens.length;
+        const dp = Array.from({ length: n + 1 }, () => new Uint16Array(m + 1));
+        for (let i = 0; i < n; i++) {
+          for (let j = 0; j < m; j++) {
+            if (oldTokens[i] === newTokens[j]) {
+              dp[i + 1][j + 1] = dp[i][j] + 1;
+            } else {
+              dp[i + 1][j + 1] = Math.max(dp[i + 1][j], dp[i][j + 1]);
+            }
+          }
+        }
+
+        const chunks = [];
+        let i = n, j = m;
+        while (i > 0 || j > 0) {
+          if (i > 0 && j > 0 && oldTokens[i - 1] === newTokens[j - 1]) {
+            chunks.unshift({ type: "eq", value: oldTokens[i - 1] });
+            i--;
+            j--;
+          } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
+            chunks.unshift({ type: "ins", value: newTokens[j - 1] });
+            j--;
+          } else if (i > 0 && (j === 0 || dp[i][j - 1] < dp[i - 1][j])) {
+            chunks.unshift({ type: "del", value: oldTokens[i - 1] });
+            i--;
+          }
+        }
+        return chunks;
+      }
+
+      function escapeHtml(str) {
+        if (!str) return "";
+        return String(str)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;");
+      }
+
+      const diffModalEl = document.getElementById("diffModal");
+      const diffModalSubtitle = document.getElementById("diffModalSubtitle");
+      const diffOldMeta = document.getElementById("diffOldMeta");
+      const diffNewMeta = document.getElementById("diffNewMeta");
+      const diffOldBox = document.getElementById("diffOldBox");
+      const diffNewBox = document.getElementById("diffNewBox");
+      const diffUnifiedBox = document.getElementById("diffUnifiedBox");
+      const sideBySideView = document.getElementById("sideBySideView");
+      const unifiedView = document.getElementById("unifiedView");
+      const btnSideBySide = document.getElementById("btnSideBySide");
+      const btnUnified = document.getElementById("btnUnified");
+
+      // View toggle handling
+      btnSideBySide.addEventListener("click", () => {
+        btnSideBySide.classList.add("active");
+        btnUnified.classList.remove("active");
+        sideBySideView.style.display = "flex";
+        unifiedView.style.display = "none";
+      });
+
+      btnUnified.addEventListener("click", () => {
+        btnUnified.classList.add("active");
+        btnSideBySide.classList.remove("active");
+        sideBySideView.style.display = "none";
+        unifiedView.style.display = "block";
+      });
+
+      function showDiffModal() {
+        if (window.bootstrap && window.bootstrap.Modal) {
+          const bsModal = bootstrap.Modal.getOrCreateInstance(diffModalEl);
+          bsModal.show();
+        } else {
+          // Fallback if bootstrap modal helper is unavailable
+          diffModalEl.classList.add("show");
+          diffModalEl.style.display = "block";
+          let backdrop = document.getElementById("modal-fallback-backdrop");
+          if (!backdrop) {
+            backdrop = document.createElement("div");
+            backdrop.id = "modal-fallback-backdrop";
+            backdrop.className = "modal-backdrop fade show";
+            document.body.appendChild(backdrop);
+          }
+        }
+      }
+
+      function hideDiffModal() {
+        if (window.bootstrap && window.bootstrap.Modal) {
+          const bsModal = bootstrap.Modal.getInstance(diffModalEl);
+          if (bsModal) bsModal.hide();
+        }
+        diffModalEl.classList.remove("show");
+        diffModalEl.style.display = "none";
+        const backdrop = document.getElementById("modal-fallback-backdrop");
+        if (backdrop) backdrop.remove();
+      }
+
+      document.getElementById("diffModalCloseBtn").addEventListener("click", hideDiffModal);
+      document.getElementById("diffModalFooterCloseBtn").addEventListener("click", hideDiffModal);
+
+      // Event delegation for View diff buttons
+      document.getElementById("versions-container").addEventListener("click", (e) => {
+        const btn = e.target.closest(".view-diff-btn");
+        if (!btn) return;
+        e.preventDefault();
+
+        const index = parseInt(btn.getAttribute("data-index"), 10);
+        const currentVersion = versionsData[index];
+        if (!currentVersion) return;
+
+        // Since versions are ordered newest to oldest, the previous chronological version is index + 1
+        const previousVersion = versionsData[index + 1];
+        const oldText = previousVersion ? (previousVersion.body || "") : "";
+        const newText = currentVersion ? (currentVersion.body || "") : "";
+
+        if (previousVersion) {
+          diffModalSubtitle.innerHTML = `Comparing selected snapshot <strong>${escapeHtml(currentVersion.createdAt)}</strong> (by ${escapeHtml(currentVersion.savedBy)}) against previous snapshot <strong>${escapeHtml(previousVersion.createdAt)}</strong> (by ${escapeHtml(previousVersion.savedBy)})`;
+          diffOldMeta.textContent = `${previousVersion.createdAt} (${previousVersion.savedBy})`;
+          diffNewMeta.textContent = `${currentVersion.createdAt} (${currentVersion.savedBy})`;
+        } else {
+          diffModalSubtitle.innerHTML = `Initial saved snapshot <strong>${escapeHtml(currentVersion.createdAt)}</strong> (by ${escapeHtml(currentVersion.savedBy)}) — compared against empty document`;
+          diffOldMeta.textContent = "Initial (Empty document)";
+          diffNewMeta.textContent = `${currentVersion.createdAt} (${currentVersion.savedBy})`;
+        }
+
+        if (oldText === newText) {
+          const emptyNotice = `<div class="text-muted fst-italic p-3">No textual differences between these snapshots.</div>`;
+          diffOldBox.innerHTML = escapeHtml(oldText) || emptyNotice;
+          diffNewBox.innerHTML = escapeHtml(newText) || emptyNotice;
+          diffUnifiedBox.innerHTML = emptyNotice;
+          showDiffModal();
+          return;
+        }
+
+        const oldTokens = tokenize(oldText);
+        const newTokens = tokenize(newText);
+        const diffResult = computeDiff(oldTokens, newTokens);
+
+        let oldHtml = "";
+        let newHtml = "";
+        let unifiedHtml = "";
+
+        diffResult.forEach((chunk) => {
+          const escaped = escapeHtml(chunk.value);
+          if (chunk.type === "eq") {
+            oldHtml += escaped;
+            newHtml += escaped;
+            unifiedHtml += escaped;
+          } else if (chunk.type === "del") {
+            oldHtml += `<span class="diff-del">${escaped}</span>`;
+            unifiedHtml += `<span class="diff-del">${escaped}</span>`;
+          } else if (chunk.type === "ins") {
+            newHtml += `<span class="diff-ins">${escaped}</span>`;
+            unifiedHtml += `<span class="diff-ins">${escaped}</span>`;
+          }
+        });
+
+        diffOldBox.innerHTML = oldHtml || `<span class="text-muted fst-italic">(empty)</span>`;
+        diffNewBox.innerHTML = newHtml || `<span class="text-muted fst-italic">(empty)</span>`;
+        diffUnifiedBox.innerHTML = unifiedHtml;
+
+        showDiffModal();
+      });
+    </script>
+  </body>
+</html>

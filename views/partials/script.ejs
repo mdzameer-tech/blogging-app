@@ -1,1 +1,72 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
+<script>
+  (function () {
+    function getStoredTheme() {
+      try {
+        return localStorage.getItem("theme");
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function getPreferredTheme() {
+      const stored = getStoredTheme();
+      if (stored) return stored;
+      return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    }
+
+    function applyTheme(theme) {
+      document.documentElement.setAttribute("data-bs-theme", theme);
+      const btn = document.getElementById("themeToggleBtn");
+      const icon = document.getElementById("themeToggleIcon");
+      const label = document.getElementById("themeToggleLabel");
+
+      if (btn) {
+        if (theme === "dark") {
+          if (icon) icon.className = "bi bi-sun-fill text-warning";
+          if (label) label.textContent = "Light Mode";
+          btn.setAttribute("title", "Switch to Light Mode");
+          btn.classList.remove("btn-outline-secondary");
+          btn.classList.add("btn-outline-warning");
+        } else {
+          if (icon) icon.className = "bi bi-moon-stars-fill text-primary";
+          if (label) label.textContent = "Dark Mode";
+          btn.setAttribute("title", "Switch to Dark Mode");
+          btn.classList.remove("btn-outline-warning");
+          btn.classList.add("btn-outline-secondary");
+        }
+      }
+    }
+
+    function initTheme() {
+      const theme = getPreferredTheme();
+      applyTheme(theme);
+
+      const btn = document.getElementById("themeToggleBtn");
+      if (btn && !btn.dataset.themeBound) {
+        btn.dataset.themeBound = "true";
+        btn.addEventListener("click", () => {
+          const current = document.documentElement.getAttribute("data-bs-theme") || "light";
+          const next = current === "dark" ? "light" : "dark";
+          try {
+            localStorage.setItem("theme", next);
+          } catch (e) {}
+          applyTheme(next);
+        });
+      }
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", initTheme);
+    } else {
+      initTheme();
+    }
+
+    // Sync theme if changed in another browser tab
+    window.addEventListener("storage", (e) => {
+      if (e.key === "theme" && (e.newValue === "light" || e.newValue === "dark")) {
+        applyTheme(e.newValue);
+      }
+    });
+  })();
+</script>

@@ -1,9 +1,23 @@
 const {Router} = require("express");
 const Blog = require("../models/blog");
 const Comment = require("../models/comments");
+const User = require("../models/user");
+const BlogVersion = require("../models/blogVersion");
 const multer = require("multer");
 const router = Router();
 const path = require("path");
+
+function requireLogin(req, res, next) {
+  if (!req.user) return res.redirect("/user/signin");
+  next();
+}
+
+function canEdit(blog, uid) {
+  return (
+    String(blog.createdBy) === uid ||
+    blog.collaborators.some((c) => String(c) === uid)
+  );
+}
 
 
 const storage = multer.diskStorage({
@@ -39,8 +53,50 @@ router.get("/my-blogs", async(req, res)=>{
     })
 });
 
+// Editor page
+router.get("/:id/edit", requireLogin, async (req, res) => {
+  const blog = await Blog.findById(req.params.id);
+  if (!blog) return res.status(404).send("Blog not found");
+  if (!canEdit(blog, req.user._id)) return res.status(403).send("Forbidden");
+
+  const versions = await BlogVersion.find({ blogId: blog._id })
+    .sort({ createdAt: -1 })
+    .limit(10)
+    .populate("savedBy");
+
+  return res.render("edit", { user: req.user, blog, versions });
+});
+
+// Owner adds a collaborator by email
+router.post("/:id/collaborators", requireLogin, async (req, res) => {
+  const blog = await Blog.findById(req.params.id);
+  if (!blog || String(blog.createdBy) !== req.user._id)
+    return res.status(403).send("Only the author can add collaborators");
+
+  const collaborator = await User.findOne({ email: req.body.email });
+  if (!collaborator) return res.status(404).send("No user with that email");
+
+  await Blog.findByIdAndUpdate(blog._id, {
+    $addToSet: { collaborators: collaborator._id },
+  });
+  return res.redirect(`/blog/${blog._id}`);
+});
+
+// Restore an older version
+router.post("/:id/versions/:versionId/restore", requireLogin, async (req, res) => {
+  const blog = await Blog.findById(req.params.id);
+  if (!blog || !canEdit(blog, req.user._id)) return res.status(403).send("Forbidden");
+
+  const version = await BlogVersion.findOne({ _id: req.params.versionId, blogId: blog._id });
+  if (!version) return res.status(404).send("Version not found");
+
+  await Blog.findByIdAndUpdate(blog._id, { body: version.body });
+  req.app.get("io").to(String(blog._id)).emit("init", { body: version.body }); // update live editors
+  return res.redirect(`/blog/${blog._id}/edit`);
+});
+
 router.get("/:id", async(req, res)=>{
-    const blog = await Blog.findById(req.params.id).populate("createdBy");
+    const blog = await Blog.findById(req.params.id).populate("createdBy").populate("collaborators");
     const comments = await Comment.find({ blog: req.params.id }).populate("createdBy");
 
     console.log(blog);

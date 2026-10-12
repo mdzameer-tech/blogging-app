@@ -2,6 +2,9 @@ const express = require("express");
 const path = require("path");
 const mongoose = require("mongoose");
 const cookieParser = require('cookie-parser');
+const http = require("http");
+const { Server } = require("socket.io");
+const registerEditorSocket = require("./sockets/editor");
 
 
 const { checkForAuthenticationCookie } = require("./middlewares/authentication");
@@ -49,6 +52,9 @@ app.use("/blog", blogRouter);
 
 
 
-app.listen(PORT, ()=>{
-    console.log("server started listening at", PORT);
-} );
+const server = http.createServer(app);
+const io = new Server(server);
+app.set("io", io);                 // so routes can reach it later
+registerEditorSocket(io);
+
+server.listen(PORT, () => console.log(`Server Started at PORT:${PORT}`));
