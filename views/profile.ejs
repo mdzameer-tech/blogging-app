@@ -7,15 +7,44 @@
     .avatar-wrapper {
       position: relative;
       display: inline-block;
+      width: 120px;
+      height: 120px;
     }
     .avatar-img {
-      width: 140px;
-      height: 140px;
+      width: 120px;
+      height: 120px;
+      aspect-ratio: 1 / 1;
+      border-radius: 50%;
       object-fit: cover;
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+      border: 3px solid #0d6efd;
+      transition: filter 0.2s ease, transform 0.2s ease;
+      cursor: pointer;
     }
-    .avatar-img:hover {
+    .avatar-wrapper:hover .avatar-img {
+      filter: brightness(0.9);
       transform: scale(1.02);
+    }
+    .avatar-camera-btn {
+      position: absolute;
+      bottom: 2px;
+      right: 2px;
+      background: #0d6efd;
+      color: #ffffff;
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+      border: 2px solid var(--bs-body-bg, #ffffff);
+      cursor: pointer;
+      transition: transform 0.15s ease, background-color 0.15s ease;
+    }
+    .avatar-camera-btn:hover {
+      transform: scale(1.12);
+      background-color: #0b5ed7;
     }
   </style>
 </head>
@@ -34,15 +63,19 @@
       <div class="card-body p-4 p-md-5">
         <div class="row align-items-center mb-4">
           <div class="col-auto text-center">
-            <div class="avatar-wrapper mb-2">
+            <div class="avatar-wrapper mb-2" id="avatarWrapper" title="Click to choose a new profile picture">
               <img
                 id="avatarPreview"
                 src="<%= user.profileImage %>"
-                class="rounded-circle avatar-img shadow border border-3 border-primary-subtle"
+                class="avatar-img"
                 alt="Profile Avatar"
                 onerror="this.src='/image/default-image.jpg'"
               />
+              <div class="avatar-camera-btn" id="avatarCameraBtn" title="Change photo">
+                <i class="bi bi-camera-fill"></i>
+              </div>
             </div>
+            <div class="small text-muted" style="font-size: 11px;">Tap photo to change</div>
           </div>
           <div class="col">
             <h3 class="fw-bold mb-1"><%= user.firstName %> <%= user.lastName || "" %></h3>
@@ -63,7 +96,7 @@
           <i class="bi bi-camera text-primary"></i> Change Profile Picture
         </h5>
         
-        <form action="/user/profile-image" method="POST" enctype="multipart/form-data" class="mb-5">
+        <form action="/user/profile-image" method="POST" enctype="multipart/form-data" class="mb-5" id="profileImageForm">
           <div class="mb-3">
             <label for="profileImageInput" class="form-label small text-muted">Select an image file (JPG, PNG, GIF, WEBP)</label>
             <input
@@ -75,7 +108,7 @@
               required
             />
           </div>
-          <button type="submit" class="btn btn-primary d-inline-flex align-items-center gap-2 shadow-sm">
+          <button type="submit" class="btn btn-primary d-inline-flex align-items-center gap-2 shadow-sm" id="uploadBtn">
             <i class="bi bi-cloud-arrow-up"></i> Upload Profile Picture
           </button>
         </form>
@@ -134,9 +167,14 @@
   <%- include("./partials/script.ejs") %>
 
   <script>
-    // Live preview of chosen profile image before upload
     const fileInput = document.getElementById("profileImageInput");
     const preview = document.getElementById("avatarPreview");
+    const avatarWrapper = document.getElementById("avatarWrapper");
+
+    // Clicking avatar preview or camera badge triggers the file picker directly
+    if (avatarWrapper && fileInput) {
+      avatarWrapper.addEventListener("click", () => fileInput.click());
+    }
 
     if (fileInput && preview) {
       fileInput.addEventListener("change", function () {

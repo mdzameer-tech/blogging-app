@@ -148,6 +148,53 @@
         <div id="typing-indicator" class="mt-1 d-flex flex-wrap gap-2" style="min-height: 24px;"></div>
       </div>
 
+      <!-- Editable Cover Image section -->
+      <div class="card p-3 mb-3 bg-body-tertiary border shadow-sm">
+        <div class="d-flex justify-content-between align-items-center">
+          <span class="fw-semibold d-flex align-items-center gap-2">
+            <i class="bi bi-image text-primary"></i> Cover Image
+          </span>
+          <button class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1" type="button" data-bs-toggle="collapse" data-bs-target="#changeCoverCollapse" aria-expanded="false" aria-controls="changeCoverCollapse">
+            <i class="bi bi-pencil-square"></i> Change Cover
+          </button>
+        </div>
+
+        <div class="text-center my-2 position-relative">
+          <img
+            id="currentCoverPreview"
+            src="<%= blog.coverImage || '/image/default-image.jpg' %>"
+            class="img-fluid rounded border shadow-sm"
+            style="max-height: 240px; width: 100%; object-fit: cover;"
+            alt="<%= blog.title %> Cover"
+            onerror="this.src='/image/default-image.jpg'"
+          />
+        </div>
+
+        <div class="collapse mt-2" id="changeCoverCollapse">
+          <form action="/blog/<%= blog._id %>/cover-image" method="POST" enctype="multipart/form-data" class="border-top pt-3">
+            <div class="mb-2">
+              <label for="coverImageInput" class="form-label small text-muted">Select new cover image (JPG, PNG, WEBP, etc.)</label>
+              <input
+                type="file"
+                name="coverImage"
+                id="coverImageInput"
+                class="form-control form-control-sm"
+                accept="image/*"
+                required
+              />
+            </div>
+            <div class="d-flex gap-2">
+              <button type="submit" class="btn btn-sm btn-primary d-inline-flex align-items-center gap-1 shadow-sm">
+                <i class="bi bi-cloud-arrow-up"></i> Upload Cover
+              </button>
+              <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#changeCoverCollapse">
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
       <!-- Editor with real-time cursor overlay -->
       <div class="editor-wrapper shadow-sm">
         <div id="cursors-layer" class="cursors-layer"></div>
@@ -724,6 +771,29 @@
         diffUnifiedBox.innerHTML = unifiedHtml;
 
         showDiffModal();
+      });
+
+      // Cover image live preview and socket real-time sync
+      const coverInput = document.getElementById("coverImageInput");
+      const coverPreview = document.getElementById("currentCoverPreview");
+
+      if (coverInput && coverPreview) {
+        coverInput.addEventListener("change", function () {
+          const file = this.files[0];
+          if (file) {
+            const reader = new FileReader();
+            reader.onload = function (e) {
+              coverPreview.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+          }
+        });
+      }
+
+      socket.on("coverUpdated", (data) => {
+        if (data && data.coverImage && coverPreview) {
+          coverPreview.src = data.coverImage;
+        }
       });
     </script>
   </body>

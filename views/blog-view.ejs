@@ -26,21 +26,41 @@
  
     <% if (blog.createdBy) { %>
     <div class="container mt-4">
-      <p>Creator</p>
-      <img src="<%= blog.createdBy.profileImage %>" width="40px"/> <%= 
-        blog.createdBy.firstName %> <%= blog.createdBy.lastName %>
+      <h6 class="text-muted text-uppercase small fw-bold mb-2">Author</h6>
+      <div class="d-flex align-items-center gap-2">
+        <img
+          src="<%= blog.createdBy.profileImage %>"
+          width="42"
+          height="42"
+          class="rounded-circle object-fit-cover shadow-sm border border-2 border-primary-subtle"
+          style="aspect-ratio: 1/1;"
+          alt="<%= blog.createdBy.firstName %>"
+          onerror="this.src='/image/default-image.jpg'"
+        />
+        <span class="fw-semibold"><%= blog.createdBy.firstName %> <%= blog.createdBy.lastName || "" %></span>
+      </div>
     </div>
     <% } %>
 
     <% if (blog.collaborators && blog.collaborators.length > 0) { %>
     <div class="container mt-3">
-      <p>Collaborators</p>
-      <% blog.collaborators.forEach(collab => { %>
-        <div class="mb-2">
-          <img src="<%= collab.profileImage %>" width="40px"/> 
-          <%= collab.firstName %> <%= collab.lastName %>
-        </div>
-      <% }) %>
+      <h6 class="text-muted text-uppercase small fw-bold mb-2">Collaborators</h6>
+      <div class="d-flex flex-wrap gap-3">
+        <% blog.collaborators.forEach(collab => { %>
+          <div class="d-flex align-items-center gap-2">
+            <img
+              src="<%= collab.profileImage %>"
+              width="36"
+              height="36"
+              class="rounded-circle object-fit-cover border shadow-sm"
+              style="aspect-ratio: 1/1;"
+              alt="<%= collab.firstName %>"
+              onerror="this.src='/image/default-image.jpg'"
+            /> 
+            <span class="small"><%= collab.firstName %> <%= collab.lastName || "" %></span>
+          </div>
+        <% }) %>
+      </div>
     </div>
     <% } %>
 
@@ -48,38 +68,55 @@
     <div class="container mt-3">
       <form action="/blog/<%= blog._id %>/collaborators" method="post" class="d-flex align-items-end gap-2">
         <div>
-          <label class="form-label mb-1">Add collaborator (email)</label>
-          <input type="email" name="email" class="form-control" required />
+          <label class="form-label mb-1 small fw-semibold">Add collaborator (email)</label>
+          <input type="email" name="email" class="form-control form-control-sm" required />
         </div>
         <button class="btn btn-sm btn-primary">Add</button>
       </form>
     </div>
     <% } %>
 
-    <div class="container mt-3">
+    <div class="container mt-4">
       <h4>Comments (<%= comments.length %>)</h4>
       <% if (locals.user) { %>
-      <form action="/blog/comment/<%= blog._id %>" method="post">
-        <div class="mb-3">
+      <form action="/blog/comment/<%= blog._id %>" method="post" class="mb-3">
+        <div class="input-group">
           <input
             type="text"
             name="content"
             class="form-control"
-            placeholder="Enter your comment"
+            placeholder="Write a comment..."
+            required
           />
-          <button class="btn btn-sm btn-primary mt-2" type="submit">Add</button>
+          <button class="btn btn-primary" type="submit">Post Comment</button>
         </div>
       </form>
       <% } %>
 
       <div class="mt-3">
+        <% if (comments.length === 0) { %>
+          <p class="text-muted small fst-italic">No comments yet. Be the first to comment!</p>
+        <% } %>
         <% comments.forEach(comment => { %>
-        <div class="mb-2">
-          <% if (comment.createdBy) { %>
-            <img src="<%= comment.createdBy.profileImage %>" width="40px" />
-            <%= comment.createdBy.firstName %> <%= comment.createdBy.lastName %>
-          <% } %>
-          <pre><%= comment.content %></pre>
+        <div class="card p-3 mb-2 bg-body-tertiary border shadow-sm">
+          <div class="d-flex align-items-center gap-2 mb-2">
+            <% if (comment.createdBy) { %>
+              <img
+                src="<%= comment.createdBy.profileImage %>"
+                width="32"
+                height="32"
+                class="rounded-circle object-fit-cover border shadow-sm"
+                style="aspect-ratio: 1/1;"
+                alt="<%= comment.createdBy.firstName %>"
+                onerror="this.src='/image/default-image.jpg'"
+              />
+              <strong class="small"><%= comment.createdBy.firstName %> <%= comment.createdBy.lastName || "" %></strong>
+            <% } else { %>
+              <i class="bi bi-person-circle fs-5"></i>
+              <strong class="small">Anonymous</strong>
+            <% } %>
+          </div>
+          <div style="white-space: pre-wrap; font-size: 15px;"><%= comment.content %></div>
         </div>
         <% }) %>
       </div>

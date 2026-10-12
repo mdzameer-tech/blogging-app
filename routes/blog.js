@@ -95,6 +95,32 @@ router.post("/:id/versions/:versionId/restore", requireLogin, async (req, res) =
   return res.redirect(`/blog/${blog._id}/edit`);
 });
 
+// Update blog cover image
+router.post("/:id/cover-image", requireLogin, upload.single("coverImage"), async (req, res) => {
+  try {
+    const blog = await Blog.findById(req.params.id);
+    if (!blog) return res.status(404).send("Blog not found");
+    if (!canEdit(blog, req.user._id)) return res.status(403).send("Forbidden");
+
+    if (!req.file) {
+      return res.redirect(`/blog/${blog._id}/edit`);
+    }
+
+    const newCoverUrl = `/uploads/${req.file.filename}`;
+    await Blog.findByIdAndUpdate(blog._id, { coverImage: newCoverUrl });
+
+    // Notify all active socket editors for this blog
+    if (req.app.get("io")) {
+      req.app.get("io").to(String(blog._id)).emit("coverUpdated", { coverImage: newCoverUrl });
+    }
+
+    return res.redirect(`/blog/${blog._id}/edit`);
+  } catch (err) {
+    console.error("Error updating cover image:", err);
+    return res.redirect(`/blog/${req.params.id}/edit`);
+  }
+});
+
 router.get("/:id", async(req, res)=>{
     const blog = await Blog.findById(req.params.id).populate("createdBy").populate("collaborators");
     const comments = await Comment.find({ blog: req.params.id }).populate("createdBy");

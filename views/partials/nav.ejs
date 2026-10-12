@@ -16,9 +16,9 @@
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle d-flex align-items-center gap-2" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
               <% if (locals.user.profileImage) { %>
-                <img src="<%= locals.user.profileImage %>" width="26" height="26" class="rounded-circle object-fit-cover border" alt="Avatar" onerror="this.src='/image/default-image.jpg'" />
+                <img src="<%= locals.user.profileImage %>" width="30" height="30" class="rounded-circle object-fit-cover shadow-sm border border-2 border-primary-subtle" style="aspect-ratio: 1/1;" alt="Avatar" onerror="this.src='/image/default-image.jpg'" />
               <% } else { %>
-                <i class="bi bi-person-circle"></i>
+                <i class="bi bi-person-circle fs-5"></i>
               <% } %>
               <span><%- locals.user.firstName %></span>
             </a>
