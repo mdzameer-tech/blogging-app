@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <%- include("./partials/head.ejs") %>
+  <title>User Profile - Bloggify</title>
+  <style>
+    .avatar-wrapper {
+      position: relative;
+      display: inline-block;
+    }
+    .avatar-img {
+      width: 140px;
+      height: 140px;
+      object-fit: cover;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .avatar-img:hover {
+      transform: scale(1.02);
+    }
+  </style>
+</head>
+<body>
+  <%- include("./partials/nav.ejs") %>
+
+  <div class="container mt-5 mb-5" style="max-width: 800px;">
+    <% if (locals.success) { %>
+      <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i><%= locals.success %>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    <% } %>
+
+    <div class="card shadow-sm border bg-body-tertiary">
+      <div class="card-body p-4 p-md-5">
+        <div class="row align-items-center mb-4">
+          <div class="col-auto text-center">
+            <div class="avatar-wrapper mb-2">
+              <img
+                id="avatarPreview"
+                src="<%= user.profileImage %>"
+                class="rounded-circle avatar-img shadow border border-3 border-primary-subtle"
+                alt="Profile Avatar"
+                onerror="this.src='/image/default-image.jpg'"
+              />
+            </div>
+          </div>
+          <div class="col">
+            <h3 class="fw-bold mb-1"><%= user.firstName %> <%= user.lastName || "" %></h3>
+            <p class="text-muted mb-2">
+              <i class="bi bi-envelope me-1"></i><%= user.email %>
+              <span class="badge bg-primary-subtle text-primary border border-primary-subtle ms-2"><%= user.role %></span>
+            </p>
+            <small class="text-secondary">
+              <i class="bi bi-calendar-check me-1"></i>Member since <%= user.createdAt ? new Date(user.createdAt).toLocaleDateString() : "recently" %>
+            </small>
+          </div>
+        </div>
+
+        <hr class="my-4">
+
+        <!-- Update Profile Picture Section -->
+        <h5 class="fw-bold mb-3 d-flex align-items-center gap-2">
+          <i class="bi bi-camera text-primary"></i> Change Profile Picture
+        </h5>
+        
+        <form action="/user/profile-image" method="POST" enctype="multipart/form-data" class="mb-5">
+          <div class="mb-3">
+            <label for="profileImageInput" class="form-label small text-muted">Select an image file (JPG, PNG, GIF, WEBP)</label>
+            <input
+              type="file"
+              name="profileImage"
+              id="profileImageInput"
+              class="form-control"
+              accept="image/*"
+              required
+            />
+          </div>
+          <button type="submit" class="btn btn-primary d-inline-flex align-items-center gap-2 shadow-sm">
+            <i class="bi bi-cloud-arrow-up"></i> Upload Profile Picture
+          </button>
+        </form>
+
+        <hr class="my-4">
+
+        <!-- Update Account Details Section -->
+        <h5 class="fw-bold mb-3 d-flex align-items-center gap-2">
+          <i class="bi bi-person-gear text-primary"></i> Personal Details
+        </h5>
+
+        <form action="/user/profile" method="POST">
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <label for="firstName" class="form-label">First Name</label>
+              <input
+                type="text"
+                name="firstName"
+                id="firstName"
+                class="form-control"
+                value="<%= user.firstName %>"
+                required
+              />
+            </div>
+            <div class="col-md-6">
+              <label for="lastName" class="form-label">Last Name</label>
+              <input
+                type="text"
+                name="lastName"
+                id="lastName"
+                class="form-control"
+                value="<%= user.lastName || '' %>"
+              />
+            </div>
+          </div>
+          <div class="mb-3">
+            <label for="email" class="form-label">Email address</label>
+            <input
+              type="email"
+              id="email"
+              class="form-control"
+              value="<%= user.email %>"
+              disabled
+              readonly
+            />
+            <div class="form-text">Email address cannot be changed.</div>
+          </div>
+          <button type="submit" class="btn btn-outline-primary d-inline-flex align-items-center gap-2">
+            <i class="bi bi-check2-circle"></i> Save Details
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <%- include("./partials/script.ejs") %>
+
+  <script>
+    // Live preview of chosen profile image before upload
+    const fileInput = document.getElementById("profileImageInput");
+    const preview = document.getElementById("avatarPreview");
+
+    if (fileInput && preview) {
+      fileInput.addEventListener("change", function () {
+        const file = this.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = function (e) {
+            preview.src = e.target.result;
+          };
+          reader.readAsDataURL(file);
+        }
+      });
+    }
+  </script>
+</body>
+</html>

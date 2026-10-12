@@ -10,6 +10,7 @@ function checkForAuthenticationCookie(cookieName){
 
         try{
             req.user = validateToken(tokenCookieValue);
+            res.locals.user = req.user;
         }
         catch(error){
 

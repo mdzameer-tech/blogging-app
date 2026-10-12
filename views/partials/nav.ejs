@@ -14,13 +14,32 @@
             <a class="nav-link" href="/blog/add-new">Add Blog</a>
           </li>
           <li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-              <%- locals.user.firstName %>
+            <a class="nav-link dropdown-toggle d-flex align-items-center gap-2" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+              <% if (locals.user.profileImage) { %>
+                <img src="<%= locals.user.profileImage %>" width="26" height="26" class="rounded-circle object-fit-cover border" alt="Avatar" onerror="this.src='/image/default-image.jpg'" />
+              <% } else { %>
+                <i class="bi bi-person-circle"></i>
+              <% } %>
+              <span><%- locals.user.firstName %></span>
             </a>
 
-            <ul class="dropdown-menu">
-              <li><a class="dropdown-item" href="/blog/my-blogs">My Blogs</a></li>
-              <li><a class="dropdown-item" href="/user/logout">Logout</a></li>
+            <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+              <li>
+                <a class="dropdown-item d-flex align-items-center gap-2" href="/user/profile">
+                  <i class="bi bi-person"></i> My Profile
+                </a>
+              </li>
+              <li>
+                <a class="dropdown-item d-flex align-items-center gap-2" href="/blog/my-blogs">
+                  <i class="bi bi-journal-text"></i> My Blogs
+                </a>
+              </li>
+              <li><hr class="dropdown-divider"></li>
+              <li>
+                <a class="dropdown-item text-danger d-flex align-items-center gap-2" href="/user/logout">
+                  <i class="bi bi-box-arrow-right"></i> Logout
+                </a>
+              </li>
             </ul>
           </li>
         <% } else { %>
